@@ -10,23 +10,70 @@ export default function MeasurementCalculator() {
   const calculate = (e) => {
     e.preventDefault()
     
-    // Simple calculation logic - in a real app this would be more complex
     const l = parseFloat(length)
     const w = parseFloat(width)
     const t = parseFloat(thickness)
     
     if (l && w && t) {
+      // Basic calculations
       const area = l * w
       const volume = area * t
-      const sheetsNeeded = Math.ceil(area / (8 * 4)) // Assuming standard 8x4 sheets
+      const boardFeet = (l * 12 * w * 12 * t) / 144 // Convert all to inches first
+      
+      // Sheet material calculations
+      const sheetsNeeded = Math.ceil(area / 32) // 8x4 sheets = 32 sq.ft
+      const waste = (sheetsNeeded * 32 - area).toFixed(2)
+      
+      // Cost estimation (sample rates)
+      const materialRates = {
+        plywood: 50,
+        mdf: 40,
+        teak: 200,
+        oak: 150
+      }
+      const materialCost = sheetsNeeded * materialRates[material]
+      
+      // Cutting pattern suggestions
+      const cuttingPattern = generateCuttingPattern(l, w)
       
       setResult({
         area: area.toFixed(2),
         volume: volume.toFixed(2),
+        boardFeet: boardFeet.toFixed(2),
         sheets: sheetsNeeded,
-        waste: (sheetsNeeded * 32 - area).toFixed(2) // 32 is 8x4
+        waste,
+        materialCost,
+        cuttingPattern,
+        materialType: material.charAt(0).toUpperCase() + material.slice(1)
       })
     }
+  }
+
+  // Generate optimal cutting pattern
+  const generateCuttingPattern = (length, width) => {
+    const patterns = []
+    let remainingLength = 8
+    let remainingWidth = 4
+    
+    // Try to fit the main piece
+    if (length <= 8 && width <= 4) {
+      patterns.push(`${length}ft x ${width}ft (main piece)`)
+      remainingLength -= length
+      remainingWidth -= width
+      
+      // Suggest uses for remaining material
+      if (remainingLength > 0) {
+        patterns.push(`${remainingLength}ft x ${width}ft (remaining length)`)
+      }
+      if (remainingWidth > 0) {
+        patterns.push(`${length}ft x ${remainingWidth}ft (remaining width)`)
+      }
+    } else {
+      // For pieces larger than a single sheet
+      patterns.push(`Multiple sheets needed - panel construction recommended`)
+    }
+    
+    return patterns
   }
 
   return (
@@ -99,22 +146,59 @@ export default function MeasurementCalculator() {
       
       {result && (
         <div className="mt-6 p-4 bg-gray-100 rounded-md">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Results</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-gray-700">Area: <span className="font-semibold">{result.area} sq.ft</span></p>
-              <p className="text-gray-700">Volume: <span className="font-semibold">{result.volume} cu.ft</span></p>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Results for {result.materialType}</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="space-y-2">
+              <p className="text-gray-700">
+                <span className="font-semibold">Area:</span> {result.area} sq.ft
+                <span className="text-sm text-gray-500 ml-2">(L×W: {length}ft × {width}ft)</span>
+              </p>
+              
+              <p className="text-gray-700">
+                <span className="font-semibold">Volume:</span> {result.volume} cu.ft
+              </p>
+              
+              <p className="text-gray-700">
+                <span className="font-semibold">Board Feet:</span> {result.boardFeet}
+                <span className="text-sm text-gray-500 ml-2">(L×W×T in inches ÷ 144)</span>
+              </p>
             </div>
-            <div>
-              <p className="text-gray-700">Sheets Needed: <span className="font-semibold">{result.sheets} (8x4 sheets)</span></p>
-              <p className="text-gray-700">Estimated Waste: <span className="font-semibold">{result.waste} sq.ft</span></p>
+            
+            <div className="space-y-2">
+              <p className="text-gray-700">
+                <span className="font-semibold">Sheets Needed:</span> {result.sheets} (8x4 sheets)
+              </p>
+              
+              <p className="text-gray-700">
+                <span className="font-semibold">Estimated Waste:</span> {result.waste} sq.ft
+                <span className="text-sm text-gray-500 ml-2">({((result.waste / (result.sheets * 32)) * 100).toFixed(1)}% of total)</span>
+              </p>
+              
+              <p className="text-gray-700">
+                <span className="font-semibold">Material Cost:</span> ₹{result.materialCost}
+                <span className="text-sm text-gray-500 ml-2">(approximate)</span>
+              </p>
             </div>
           </div>
+          
           <div className="mt-4">
-            <p className="text-gray-700 font-semibold">Optimal Cutting Pattern:</p>
-            <p className="text-gray-600">Cut 1: 6ft x 3ft (main piece)</p>
-            <p className="text-gray-600">Cut 2: 2ft x 4ft (from remaining)</p>
-            <p className="text-gray-600">Cut 3: 6ft x 1ft (from remaining)</p>
+            <p className="text-gray-700 font-semibold mb-2">Suggested Cutting Pattern:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              {result.cuttingPattern.map((pattern, index) => (
+                <li key={index} className="text-gray-600">{pattern}</li>
+              ))}
+            </ul>
+            <p className="text-sm text-gray-500 mt-2">
+              Tip: Always cut largest pieces first to minimize waste
+            </p>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Pro Tip:</span> For {result.materialType}, allow 5% extra for 
+              mistakes and natural defects in the material.
+            </p>
           </div>
         </div>
       )}
